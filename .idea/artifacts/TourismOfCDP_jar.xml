@@ -1,0 +1,10 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="TourismOfCDP:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/TourismOfCDP_jar</output-path>
+    <root id="archive" name="TourismOfCDP.jar">
+      <element id="module-output" name="TourismOfCDP" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/scala-lang/scala-library/2.11.8/scala-library-2.11.8.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/scala-lang/scala-reflect/2.11.8/scala-reflect-2.11.8.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>
