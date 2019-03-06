@@ -45,19 +45,15 @@ object MyMiddle extends UserDefinedAggregateFunction {
     val b=a.length
     if(b % 2 == 0){
       if(b % 4 == 0){
-        println("1")
         ((a(b/4).toDouble+a(b/4-1).toDouble)/2).toString + "#" + ((a(b/2).toDouble+a(b/2-1).toDouble)/2).toString + "#" + ((aa(b/4).toDouble+aa(b/4-1).toDouble)/2).toString
       }else{
-        println("2")
-        (a(b/4)) + "#" + ((a(b/2).toDouble+a(b/2-1).toDouble)/2).toString + "#" + (aa(b/4))
+        (a(b/4)).toDouble.toString + "#" + ((a(b/2).toDouble+a(b/2-1).toDouble)/2).toString + "#" + (aa(b/4)).toDouble.toString
       }
     }else{
       if((b / 2) % 2 != 0){
-        println("3")
-        (a(b/4)) + "#" + a(b/2) + "#" + (aa(b/4))
+        (a(b/4)).toDouble.toString + "#" + a(b/2).toDouble.toString + "#" + (aa(b/4)).toDouble.toString
       }else{
-        println("4")
-        ((a(b/4).toDouble+a(b/4-1).toDouble)/2).toString + "#" + a(b/2) + "#" + ((aa(b/4).toDouble+aa(b/4-1).toDouble)/2).toString
+        ((a(b/4).toDouble+a(b/4-1).toDouble)/2).toString + "#" + a(b/2).toDouble.toString + "#" + ((aa(b/4).toDouble+aa(b/4-1).toDouble)/2).toString
       }
     }
 
