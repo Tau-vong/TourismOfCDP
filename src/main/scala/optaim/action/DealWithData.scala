@@ -76,12 +76,6 @@ object DealWithData {
     //计算事件相关信息
     sql(SQLUtils.actionGroupCalcu).createOrReplaceTempView("count_group")
 
-//todo------//
-    import spark.implicits._
-    sql("").map(row=>row.getString(0)).createOrReplaceTempView("AA")
-////////////////
-
-
     sql(SQLUtils.calcuFre).createOrReplaceTempView("A")
 
     sql(SQLUtils.maxDate).createOrReplaceTempView("B")

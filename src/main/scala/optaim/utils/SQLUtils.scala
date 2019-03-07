@@ -101,26 +101,30 @@ object SQLUtils {
       |businesstype as primaryKind,actiontype as actionKind,
       |ifnull(order_amount,0.00) as cost,analysis_date as time
       |from original_data""".stripMargin
+
+  //todo---已经优化，都需要测
   val actionGroupCalcu=
     """select userid,primaryKind,actionKind,
       |count(*) as num,
       |sum(cost) as totalcost,
       |max(time) as lasttime,
       |min(time) as originaltime,
-      |count(time) timediff
-      |from total_action_info_two
-      |group by userid,primaryKind,actionKind""".stripMargin
-  //todo-------------------------------------------------------
+      |datediff(max(time),min(time)) timediff
+      |from (
+      |select * from total_action_info_two where time>date_sub(CURRENT_DATE(),180)
+      |) x
+      |group by x.userid,x.primaryKind,x.actionKind""".stripMargin
+  //todo---待测
   val calcuFre=
     """select
-      |SUBSTRING_INDEX(myMiddle(num/(timediff+1.0)),'#',1) as l,
-      |SUBSTRING_INDEX(SUBSTRING_INDEX(myMiddle(num/(timediff+1.0)),'#',2),'#',-1) as m,
-      |SUBSTRING_INDEX(myMiddle(num/(timediff+1.0)),'#',-1) as h
+      |SUBSTRING_INDEX(myMiddle(num),'#',1) as l,
+      |SUBSTRING_INDEX(SUBSTRING_INDEX(myMiddle(num),'#',2),'#',-1) as m,
+      |SUBSTRING_INDEX(myMiddle(num),'#',-1) as h
       |from count_group""".stripMargin
-  //------------------------------------------------------------
+
   val maxDate="""select max(time) as nowtime from total_action_info_two"""
 
-  //todo-------------------------------------------------------
+  //todo---待测
   val calcuCost=
     """select
       |SUBSTRING_INDEX(myMiddle(totalcost),'#',1) as l,
@@ -128,41 +132,29 @@ object SQLUtils {
       |SUBSTRING_INDEX(myMiddle(totalcost),'#',-1) as h
       |from count_group
       |where totalcost!=0.0""".stripMargin
-  //-------------------------------------------------------------
 
+  //todo---待测
   val actionCalcuFinal=
     """insert into table total_action_info_calcu
       |select userid,primaryKind,actionKind,
-      |case when totalcost>(select h from C) then '1'
-      |when totalcost<(select l from C) then '3'
+      |case when (totalcost+0.01)>(select h from C) then '1'
+      |when (totalcost-0.01)<(select l from C) then '3'
       |else '2' end as costabilityKind,
       |case when lasttime>(select date_sub(nowtime,7) from B) then '1'
       |when lasttime<(select date_sub(nowtime,30) from B) then '3'
       |else '2' end as actionStatus,
-      |case when (num/(timediff+1.0))>(select h from A) then '1'
-      |when (num/(timediff+1.0))<(select l from A) then '3'
+      |case when (num+0.01)>(select h from A) then '1'
+      |when (num-0.01)<(select l from A) then '3'
       |else '2' end as frequencyKind
       |from count_group""".stripMargin
   val totalActionInc=
     """insert overwrite table total_action_info_inc
-      |select total_action_info_one_inc.userid,
-      |total_action_info_one_inc.primaryKind,
-      |total_action_info_one_inc.actionKind,
-      |total_action_info_one_inc.sourceKind,
-      |total_action_info_one_inc.brandid,
-      |total_action_info_one_inc.cost,
-      |total_action_info_calcu.costabilityKind,
-      |total_action_info_calcu.actionStatus,
-      |total_action_info_calcu.frequencyKind,
-      |total_action_info_one_inc.time from total_action_info_one_inc
-      |join
-      |total_action_info_calcu
-      |on
-      |total_action_info_one_inc.userid=total_action_info_calcu.userid
-      |and total_action_info_one_inc.primaryKind=total_action_info_calcu.primaryKind
-      |and total_action_info_one_inc.actionKind=total_action_info_calcu.actionKind""".stripMargin
-  val totalActionParti=
-    """insert into table total_action_info
+      |select userid,primaryKind,max(actionKind) as actionKind,sum(cost) as cost,max(time) as time,
+      |max(brandid) as brandid,max(costabilityKind) as costabilityKind,max(actionStatus) as actionStatus,
+      |max(frequencyKind) as frequencyKind,max(sourceKind) as sourceKind
+      |from
+      |(
+      |select x.* from (
       |select total_action_info_one_inc.userid,
       |total_action_info_one_inc.primaryKind,
       |total_action_info_one_inc.actionKind,
@@ -179,7 +171,83 @@ object SQLUtils {
       |on
       |total_action_info_one_inc.userid=total_action_info_calcu.userid
       |and total_action_info_one_inc.primaryKind=total_action_info_calcu.primaryKind
-      |and total_action_info_one_inc.actionKind=total_action_info_calcu.actionKind""".stripMargin
+      |and total_action_info_one_inc.actionKind=total_action_info_calcu.actionKind
+      |) x
+      |inner join (select y.userid,max(y.time) as time from
+      |(
+      |select total_action_info_one_inc.userid,
+      |total_action_info_one_inc.primaryKind,
+      |total_action_info_one_inc.actionKind,
+      |total_action_info_one_inc.sourceKind,
+      |total_action_info_one_inc.brandid,
+      |total_action_info_one_inc.cost,
+      |total_action_info_calcu.costabilityKind,
+      |total_action_info_calcu.actionStatus,
+      |total_action_info_calcu.frequencyKind,
+      |total_action_info_one_inc.time
+      |from total_action_info_one_inc
+      |join
+      |total_action_info_calcu
+      |on
+      |total_action_info_one_inc.userid=total_action_info_calcu.userid
+      |and total_action_info_one_inc.primaryKind=total_action_info_calcu.primaryKind
+      |and total_action_info_one_inc.actionKind=total_action_info_calcu.actionKind
+      |) y group by y.userid
+      |) z
+      |on x.userid = z.userid and x.time = z.time
+      |) ff group by ff.userid,ff.primaryKind""".stripMargin
+  //todo---测试
+  val totalActionParti=
+    """insert into table total_action_info
+      |select userid,primaryKind,max(actionKind) as actionKind,sum(cost) as cost,max(time) as time,
+      |max(brandid) as brandid,max(costabilityKind) as costabilityKind,max(actionStatus) as actionStatus,
+      |max(frequencyKind) as frequencyKind,max(sourceKind) as sourceKind
+      |from
+      |(
+      |select x.* from (
+      |select total_action_info_one_inc.userid,
+      |total_action_info_one_inc.primaryKind,
+      |total_action_info_one_inc.actionKind,
+      |total_action_info_one_inc.sourceKind,
+      |total_action_info_one_inc.brandid,
+      |total_action_info_one_inc.cost,
+      |total_action_info_calcu.costabilityKind,
+      |total_action_info_calcu.actionStatus,
+      |total_action_info_calcu.frequencyKind,
+      |total_action_info_one_inc.time
+      |from total_action_info_one_inc
+      |join
+      |total_action_info_calcu
+      |on
+      |total_action_info_one_inc.userid=total_action_info_calcu.userid
+      |and total_action_info_one_inc.primaryKind=total_action_info_calcu.primaryKind
+      |and total_action_info_one_inc.actionKind=total_action_info_calcu.actionKind
+      |) x
+      |inner join (select y.userid,max(y.time) as time from
+      |(
+      |select total_action_info_one_inc.userid,
+      |total_action_info_one_inc.primaryKind,
+      |total_action_info_one_inc.actionKind,
+      |total_action_info_one_inc.sourceKind,
+      |total_action_info_one_inc.brandid,
+      |total_action_info_one_inc.cost,
+      |total_action_info_calcu.costabilityKind,
+      |total_action_info_calcu.actionStatus,
+      |total_action_info_calcu.frequencyKind,
+      |total_action_info_one_inc.time
+      |from total_action_info_one_inc
+      |join
+      |total_action_info_calcu
+      |on
+      |total_action_info_one_inc.userid=total_action_info_calcu.userid
+      |and total_action_info_one_inc.primaryKind=total_action_info_calcu.primaryKind
+      |and total_action_info_one_inc.actionKind=total_action_info_calcu.actionKind
+      |) y group by y.userid
+      |) z
+      |on x.userid = z.userid and x.time = z.time
+      |) ff group by ff.userid,ff.primaryKind""".stripMargin
+
+  //todo---优化数据库存储，待删
   val insightInc=
     """insert overwrite table Insight_table_inc
       |select distinct shoulv_userid as userid,
@@ -191,6 +259,7 @@ object SQLUtils {
       |else '2' end as sourceKind,
       |user_gender as sex,province
       |from original_data""".stripMargin
+  //todo---优化数据库存储，待删
   val insight=
     """insert into table Insight_table
       |select distinct shoulv_userid as userid,
@@ -203,18 +272,16 @@ object SQLUtils {
       |user_gender as sex,province
       |from original_data""".stripMargin
 
-  //todo
-  //1.修改channel，将其换到可变化的数据库中
-  //2.对计算数据那块用中位数代替均值
-  //3.求每个业务中actionKind最大的，将重复数据去重，每个actionKind对应的userid只有一个
-  //4.修改洞察那块
-  //5.有效性那块利用分位数进行代替
+
 
 }
 
 //todo---选择最新记录中最大actionKind的SQL
-//select userid,primaryKind,max(actionKind) as actionKind,sum(cost) as cost,max(time) as time from
-//(select total_action_info_copy1.* from total_action_info_copy1
-//inner join (select userid, max(time) as time from total_action_info_copy1
-//group by userid ) b on total_action_info_copy1.userid = b.userid and total_action_info_copy1.time = b.time) x
+//select userid,primaryKind,max(actionKind) as actionKind,sum(cost) as cost,max(time) as time,
+//max(brandid) as brandid,max(costabilityKind) as costabilityKind,max(actionStatus) as actionStatus,
+//max(frequencyKind) as frequencyKind,max(sourceKind) as sourceKind
+//from
+//(select total_action_info.* from total_action_info
+//inner join (select userid, max(time) as time from total_action_info
+//group by userid ) b on total_action_info.userid = b.userid and total_action_info.time = b.time) x
 //group by userid,primaryKind;
