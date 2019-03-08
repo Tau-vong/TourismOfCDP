@@ -117,6 +117,7 @@ object SQLUtils {
   val userId=
     """insert overwrite table before_userid_table
       |select userid from consumer_base_info""".stripMargin
+  //todo---直接去重？？？
   val actionInfoInc=
     """insert overwrite table total_action_info_one_inc
       |select distinct shoulv_userid as userid,
