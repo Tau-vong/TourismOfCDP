@@ -44,6 +44,8 @@ object SQLUtils {
   val braandId=
     """insert overwrite table before_brandid_table
       |select brandid from brand_table""".stripMargin
+
+  /*
   val consumerInfoInc1=
     """insert overwrite table consumer_base_info_inc_one
       |select distinct shoulv_userid as userid,
@@ -53,19 +55,31 @@ object SQLUtils {
       |user_gender as sex,null as channel
       |from original_data_one where shoulv_userid not in
       |(select userid from before_userid_table)""".stripMargin
+    */
+
   val consumerInfoInc=
     """insert overwrite table consumer_base_info_inc
-      |select max(distinct userid) as userid ,
-      |max(createtime) as createtime ,
-      |max(city) as city,
-      |max(phone) as phone,
-      |max(province) as province,
-      |max(sourcetype) as sourcetype,
-      |max(country) as country,
-      |max(birthday) as birthday,
-      |max(sex) as sex,
-      |max(channel) as channel
-      |from consumer_base_info_inc_one group by userid""".stripMargin
+      |select max(distinct x.userid) as userid ,
+      |max(x.createtime) as createtime ,
+      |max(x.city) as city,
+      |max(x.phone) as phone,
+      |max(x.province) as province,
+      |max(x.sourcetype) as sourcetype,
+      |max(x.country) as country,
+      |max(x.birthday) as birthday,
+      |max(x.sex) as sex,
+      |max(x.channel) as channel
+      |from
+      |(select distinct shoulv_userid as userid,
+      |from_unixtime(user_createtime/1000,'yyyy-MM-dd') as createtime,
+      |city,user_mobile as phone,province,sourcetype,country,
+      |from_unixtime(user_birthday/1000,'yyyy-MM-dd') as birthday,
+      |user_gender as sex,null as channel
+      |from original_data_one where shoulv_userid not in
+      |(select userid from before_userid_table)
+      |) x group by x.userid""".stripMargin
+
+  /*
   val consumerInfoParti=
     """insert into table consumer_base_info
       |select distinct shoulv_userid as userid,
@@ -76,6 +90,30 @@ object SQLUtils {
       |from original_data_one
       |where shoulv_userid not in
       |(select userid from before_userid_table)""".stripMargin
+   */
+
+  val consumerInfoParti=
+    """insert into table consumer_base_info
+      |select max(distinct x.userid) as userid ,
+      |max(x.createtime) as createtime ,
+      |max(x.city) as city,
+      |max(x.phone) as phone,
+      |max(x.province) as province,
+      |max(x.sourcetype) as sourcetype,
+      |max(x.country) as country,
+      |max(x.birthday) as birthday,
+      |max(x.sex) as sex,
+      |max(x.channel) as channel,
+      |max(x.time) as time
+      |from
+      |(select distinct shoulv_userid as userid,
+      |from_unixtime(user_createtime/1000,'yyyy-MM-dd') as createtime,
+      |city,user_mobile as phone,province,sourcetype,country,
+      |from_unixtime(user_birthday/1000,'yyyy-MM-dd') as birthday,
+      |user_gender as sex,null as channel,analysis_date as time
+      |from original_data_one where shoulv_userid not in
+      |(select userid from before_userid_table)
+      |) x group by x.userid""".stripMargin
   val userId=
     """insert overwrite table before_userid_table
       |select userid from consumer_base_info""".stripMargin
@@ -149,9 +187,17 @@ object SQLUtils {
       |from count_group""".stripMargin
   val totalActionInc=
     """insert overwrite table total_action_info_inc
-      |select userid,primaryKind,max(actionKind) as actionKind,sum(cost) as cost,max(time) as time,
-      |max(brandid) as brandid,max(costabilityKind) as costabilityKind,max(actionStatus) as actionStatus,
-      |max(frequencyKind) as frequencyKind,max(sourceKind) as sourceKind
+      |select
+      |ff.userid,
+      |ff.primaryKind,
+      |max(ff.actionKind) as actionKind,
+      |max(ff.sourceKind) as sourceKind,
+      |max(ff.brandid) as brandid,
+      |sum(ff.cost) as cost,
+      |max(ff.costabilityKind) as costabilityKind,
+      |max(ff.actionStatus) as actionStatus,
+      |max(ff.frequencyKind) as frequencyKind,
+      |max(ff.time) as time
       |from
       |(
       |select x.* from (
@@ -199,9 +245,17 @@ object SQLUtils {
   //todo---测试
   val totalActionParti=
     """insert into table total_action_info
-      |select userid,primaryKind,max(actionKind) as actionKind,sum(cost) as cost,max(time) as time,
-      |max(brandid) as brandid,max(costabilityKind) as costabilityKind,max(actionStatus) as actionStatus,
-      |max(frequencyKind) as frequencyKind,max(sourceKind) as sourceKind
+      |select
+      |ff.userid,
+      |ff.primaryKind,
+      |max(ff.actionKind) as actionKind,
+      |max(ff.sourceKind) as sourceKind,
+      |max(ff.brandid) as brandid,
+      |sum(ff.cost) as cost,
+      |max(ff.costabilityKind) as costabilityKind,
+      |max(ff.actionStatus) as actionStatus,
+      |max(ff.frequencyKind) as frequencyKind,
+      |max(ff.time) as time
       |from
       |(
       |select x.* from (
@@ -255,21 +309,23 @@ object SQLUtils {
       |case when source='APP' then '1'
       |when source='H5' then '2'
       |else '3' end as source,
+      |user_gender as sex,
       |case when user_source='online' then '1'
       |else '2' end as sourceKind,
-      |user_gender as sex,province
+      |province
       |from original_data""".stripMargin
   //todo---优化数据库存储，待删
   val insight=
     """insert into table Insight_table
       |select distinct shoulv_userid as userid,
-      |analysis_date as time,
       |case when source='APP' then '1'
       |when source='H5' then '2'
       |else '3' end as source,
+      |user_gender as sex,
       |case when user_source='online' then '1'
       |else '2' end as sourceKind,
-      |user_gender as sex,province
+      |province,
+      |analysis_date as time
       |from original_data""".stripMargin
 
 

@@ -51,7 +51,7 @@ object DealWithData {
     //每次更新历史brandid全量表
     sql(SQLUtils.braandId)
 
-    sql(SQLUtils.consumerInfoInc1)
+    //sql(SQLUtils.consumerInfoInc1)
 
     //基础信息增量表
     sql(SQLUtils.consumerInfoInc)
